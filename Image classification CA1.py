@@ -39,9 +39,13 @@ def load_cifar10_filtered(selected_classes, validation_split=0.1):
 
     return (x_train_filtered, y_train_filtered), (x_valid_filtered, y_valid_filtered), (x_test_filtered, y_test_filtered)
 
-def load_cifar100_filtered(selected_classes, validation_split=0.1):
+def load_cifar100_filtered(selected_classes, validation_split=0.1, cifar10_classes=10):
     # Load CIFAR-100 dataset
     (x_train, y_train), (x_test, y_test) = cifar100.load_data(label_mode='fine')
+
+    # Offset CIFAR-100 class labels
+    y_train += cifar10_classes
+    y_test += cifar10_classes
 
     # Create a mask to filter the dataset based on the selected fine classes
     train_mask = np.isin(y_train, selected_classes).reshape(-1)
@@ -79,7 +83,7 @@ def combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_
     return (x_train_combined, y_train_combined), (x_valid_combined, y_valid_combined), (x_test_combined, y_test_combined)
 
 
-def visualize_images(X, y, class_labels, dataset_name):
+def visualize_images(X, y, class_labels, class_names, dataset_name):
     num_of_samples = []
     cols = 5
     num_classes = len(class_labels)
@@ -96,17 +100,18 @@ def visualize_images(X, y, class_labels, dataset_name):
                 axs[j][i].imshow(x_selected[random.randint(0, len(x_selected) - 1), :, :])
                 axs[j][i].axis("off")
 
-                if i == 2:
+                if i == 2 and j < len(class_names):  # Ensure j is within the valid range of class_names
                     num_of_samples.append(len(x_selected))
-                    axs[j][i].set_title(f"{class_label} - {class_labels[j]}")
+                    axs[j][i].set_title(f"{j} - {class_names[j]}")
 
     plt.suptitle(f"Images from {dataset_name}")
     plt.show()
 
-
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
-    classes_cifar100 = [2, 8, 11, 13, 19, 34, 35, 41, 46, 47, 48, 52, 56, 58, 59, 65, 80, 89, 90, 96, 98]
+    class_names_cifar10 = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck']
+    classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 57, 58, 62, 66, 68, 69, 75, 90, 99, 100, 106, 108]
+    class_names_cifar100 = ['baby', 'bicycle', 'boy', 'bus', 'cattle', 'lawn-mower', 'man', 'maple tree', 'motorcycle', 'oak tree', 'pine tree', 'pickup truck', 'palm tree', 'rabbit', 'fox', 'girl', 'tractor', 'squirrel', 'train', 'willow tree', 'woman']
 
     # Load and filter CIFAR-10 subset
     (x_train_cifar10, y_train_cifar10), (x_valid_cifar10, y_valid_cifar10), (x_test_cifar10, y_test_cifar10) = \
@@ -173,9 +178,10 @@ def main():
 
     # Combine CIFAR-10 and CIFAR-100 classes
     combined_classes = classes_cifar10 + classes_cifar100
+    combined_classes_name = class_names_cifar10 + class_names_cifar100
 
     # Visualize images for combined CIFAR datasets
-    visualize_images(x_train_combined, y_train_combined, combined_classes, "Combined CIFAR Datasets")
+    visualize_images(x_train_combined, y_train_combined, combined_classes, combined_classes_name, "Combined CIFAR Datasets")
 
 
 if __name__ == "__main__":
