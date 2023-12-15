@@ -39,17 +39,24 @@ def load_cifar10_filtered(selected_classes, validation_split=0.1):
 def load_cifar100_filtered(selected_classes, validation_split=0.1, cifar10_classes=10):
     (x_train, y_train), (x_test, y_test) = cifar100.load_data(label_mode='fine')
 
-    y_train += cifar10_classes
-    y_test += cifar10_classes
+    # Define a mapping for all tree classes to a single label
+    tree_label = 101  # You can choose any label not used in CIFAR-100
 
-    train_mask = np.isin(y_train, selected_classes).reshape(-1)
-    test_mask = np.isin(y_test, selected_classes).reshape(-1)
+    # Set the tree_label for all tree classes
+    y_train_filtered = np.where(np.isin(y_train, [47,52,56,59,96]), tree_label, y_train)
+    y_test_filtered = np.where(np.isin(y_test, [47,52,56,59,96]), tree_label, y_test)
+
+    y_train_filtered += cifar10_classes
+    y_test_filtered += cifar10_classes
+
+    train_mask = np.isin(y_train_filtered, [tree_label] + selected_classes).reshape(-1)
+    test_mask = np.isin(y_test_filtered, [tree_label] + selected_classes).reshape(-1)
 
     x_train_filtered = x_train[train_mask]
-    y_train_filtered = y_train[train_mask]
+    y_train_filtered = y_train_filtered[train_mask]
 
     x_test_filtered = x_test[test_mask]
-    y_test_filtered = y_test[test_mask]
+    y_test_filtered = y_test_filtered[test_mask]
 
     x_train_filtered, x_valid_filtered, y_train_filtered, y_valid_filtered = train_test_split(
         x_train_filtered, y_train_filtered, test_size=validation_split, random_state=42
@@ -107,8 +114,8 @@ def plot_distribution(y, class_labels):
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     class_names_cifar10 = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck']
-    classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 57, 58, 62, 66, 68, 69, 75, 90, 99, 100, 106, 108]
-    class_names_cifar100 = ['baby', 'bicycle', 'boy', 'bus', 'cattle', 'fox', 'girl', 'lawn-mower', 'man', 'maple tree', 'motorcycle', 'oak tree', 'palm tree', 'pickup truck', 'pine tree', 'rabbit', 'squirrel', 'tractor', 'train', 'willow tree', 'woman']
+    classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
+    class_names_cifar100 = ['baby', 'bicycle', 'boy', 'bus', 'cattle', 'fox', 'girl', 'lawn mower', 'man', 'motorcycle', 'pickup truck', 'rabbit', 'squirrel', 'tractor', 'train', 'woman', 'trees']
     combined_classes = classes_cifar10 + classes_cifar100
     combined_classes_name = class_names_cifar10 + class_names_cifar100
 
