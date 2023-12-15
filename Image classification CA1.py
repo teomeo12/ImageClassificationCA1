@@ -14,6 +14,7 @@ from tensorflow.keras.optimizers import Adam
 # Utilities for data processing
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Dataset
 from tensorflow.keras.datasets import cifar10, cifar100
@@ -111,6 +112,32 @@ def plot_distribution(y, class_labels):
     plt.ylabel("Number of images")
     plt.show()
 
+def preprocess_image(img):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+    img = cv2.equalizeHist(img)
+    img = img / 255.0
+    img = cv2.resize(img, (32, 32))
+    return img
+
+def preprocess_dataset(X):
+    return np.array([preprocess_image(img) for img in X])
+
+def visualize_augmented_data(X_train, y_train):
+    X_train = X_train.reshape(X_train.shape + (1,))
+
+    datagen = ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, zoom_range=0.2, shear_range=0.1, rotation_range=10)
+    datagen.fit(X_train)
+    batches = datagen.flow(X_train, y_train, batch_size=20)
+    X_batch, y_batch = next(batches)
+
+    fig, axs = plt.subplots(1, 20, figsize=(20, 5))
+    fig.tight_layout()
+    for i in range(20):
+        axs[i].imshow(X_batch[i].reshape(32, 32), cmap='gray')
+        axs[i].axis('off')
+    plt.show()
+
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     class_names_cifar10 = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck']
@@ -177,6 +204,10 @@ def main():
 
     visualize_images(x_train, y_train, combined_classes, combined_classes_name)
     plot_distribution(y_train, combined_classes)
+    x_train = preprocess_dataset(x_train)
+    x_valid = preprocess_dataset(x_valid)
+    x_test = preprocess_dataset(x_test)
+    visualize_augmented_data(x_train, y_train)
 
 if __name__ == "__main__":
     main()
