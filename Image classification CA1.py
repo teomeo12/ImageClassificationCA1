@@ -186,6 +186,25 @@ def plot_preprocessed_data(X_train, y_train):
         axs[i].axis('off')
     plt.show()
 
+def remove_samples(X, y, classes_to_remove, samples_to_remove):
+    indices_to_keep = []
+
+    for class_label in np.unique(y):
+        class_indices = np.where(y == class_label)[0]
+        np.random.shuffle(class_indices)  # Shuffle the indices for each class
+
+        if class_label in classes_to_remove:
+            class_indices = class_indices[:samples_to_remove]
+
+        indices_to_keep.extend(class_indices)
+
+    np.random.shuffle(indices_to_keep)  # Shuffle all indices again
+
+    filtered_X = X[indices_to_keep]
+    filtered_y = y[indices_to_keep]
+
+    return filtered_X, filtered_y
+
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
@@ -194,12 +213,17 @@ def main():
     combined_classes = classes_cifar10 + classes_cifar100
     combined_classes_name = class_names_cifar10 + class_names_cifar100
 
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_datasets(classes_cifar10, classes_cifar100)
-
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_and_explore_datasets(classes_cifar10, classes_cifar100)
+    
     plot_images(x_train, y_train, combined_classes, combined_classes_name)
     plot_distribution(y_train, combined_classes)
+    x_train, y_train = remove_samples(x_train, y_train, [1,2,3,4,5,7,9,111], 600)
     x_train, y_train, x_valid, y_valid, x_test, y_test = preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test)
     plot_preprocessed_data(x_train, y_train)
+    plot_distribution(y_train, combined_classes)
+    unique_classes, class_counts = np.unique(y_train, return_counts=True)
+    print("Class labels:", unique_classes)
+    print("Class counts:", class_counts)
 
 if __name__ == "__main__":
     main()
