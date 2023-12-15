@@ -40,10 +40,7 @@ def load_cifar10_filtered(selected_classes, validation_split=0.1):
 def load_cifar100_filtered(selected_classes, validation_split=0.1, cifar10_classes=10):
     (x_train, y_train), (x_test, y_test) = cifar100.load_data(label_mode='fine')
 
-    # Define a mapping for all tree classes to a single label
-    tree_label = 101  # You can choose any label not used in CIFAR-100
-
-    # Set the tree_label for all tree classes
+    tree_label = 101
     y_train_filtered = np.where(np.isin(y_train, [47,52,56,59,96]), tree_label, y_train)
     y_test_filtered = np.where(np.isin(y_test, [47,52,56,59,96]), tree_label, y_test)
 
@@ -80,7 +77,36 @@ def combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_
 
     return (x_train_combined, y_train_combined), (x_valid_combined, y_valid_combined), (x_test_combined, y_test_combined)
 
-def visualize_images(X, y, class_labels, class_names):
+def load_and_explore_datasets(classes_cifar10, classes_cifar100):
+    (x_train_cifar10, y_train_cifar10), (x_valid_cifar10, y_valid_cifar10), (x_test_cifar10, y_test_cifar10) = \
+        load_cifar10_filtered(classes_cifar10)
+    print("CIFAR-10 shapes:")
+    print_dataset_shapes("CIFAR-10", x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_valid_cifar10, x_test_cifar10, y_test_cifar10)
+    assert_dataset_properties("CIFAR-10 Train", x_train_cifar10, y_train_cifar10, expected_shape=(32, 32, 3))
+    assert_dataset_properties("CIFAR-10 Validation", x_valid_cifar10, y_valid_cifar10, expected_shape=(32, 32, 3))
+    assert_dataset_properties("CIFAR-10 Test", x_test_cifar10, y_test_cifar10, expected_shape=(32, 32, 3))
+    
+    (x_train_cifar100, y_train_cifar100), (x_valid_cifar100, y_valid_cifar100), (x_test_cifar100, y_test_cifar100) = \
+        load_cifar100_filtered(classes_cifar100)
+    print("CIFAR-100 shapes:")
+    print_dataset_shapes("CIFAR-100", x_train_cifar100, y_train_cifar100, x_valid_cifar100, y_valid_cifar100, x_test_cifar100, y_test_cifar100)
+    assert_dataset_properties("CIFAR-100 Train", x_train_cifar100, y_train_cifar100, expected_shape=(32, 32, 3))
+    assert_dataset_properties("CIFAR-100 Validation", x_valid_cifar100, y_valid_cifar100, expected_shape=(32, 32, 3))
+    assert_dataset_properties("CIFAR-100 Test", x_test_cifar100, y_test_cifar100, expected_shape=(32, 32, 3))
+
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = \
+        combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_valid_cifar10,
+                               x_test_cifar10, y_test_cifar10, x_train_cifar100, y_train_cifar100,
+                               x_valid_cifar100, y_valid_cifar100, x_test_cifar100, y_test_cifar100)
+    print("Combined CIFAR datasets shapes:")
+    print_dataset_shapes("Combined CIFAR datasets", x_train, y_train, x_valid, y_valid, x_test, y_test)
+    assert_dataset_properties("Combined Train", x_train, y_train, expected_shape=(32, 32, 3))
+    assert_dataset_properties("Combined Validation", x_valid, y_valid, expected_shape=(32, 32, 3))
+    assert_dataset_properties("Combined Test", x_test, y_test, expected_shape=(32, 32, 3))
+
+    return (x_train, y_train), (x_valid, y_valid), (x_test, y_test)
+
+def plot_images(X, y, class_labels, class_names):
     cols = 5
     num_classes = len(class_labels)
 
@@ -112,18 +138,40 @@ def plot_distribution(y, class_labels):
     plt.ylabel("Number of images")
     plt.show()
 
-def preprocess_image(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = cv2.GaussianBlur(img, (5, 5), 0)
-    img = cv2.equalizeHist(img)
-    img = img / 255.0
-    img = cv2.resize(img, (32, 32))
-    return img
+def print_dataset_shapes(name, x_train, y_train, x_valid, y_valid, x_test, y_test):
+    print(f"{name} shapes:")
+    print("Train data:", x_train.shape)
+    print("Train labels:", y_train.shape)
+    print("Validation data:", x_valid.shape)
+    print("Validation labels:", y_valid.shape)
+    print("Test data:", x_test.shape)
+    print("Test labels:", y_test.shape)
 
-def preprocess_dataset(X):
-    return np.array([preprocess_image(img) for img in X])
+def assert_dataset_properties(name, x, y, expected_shape, expected_channels=3):
+    assert x.shape[0] == y.shape[0], f"The number of {name} images is different from the number of labels"
+    assert x.shape[1:] == expected_shape, f"The {name} images are not {expected_shape}"
 
-def visualize_augmented_data(X_train, y_train):
+    if len(expected_shape) == 3 and x.shape[-1] != expected_channels:
+        raise ValueError(f"The {name} images do not have {expected_channels} channels")
+
+def preprocess_images(images):
+    processed_images = []
+    for img in images:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = cv2.equalizeHist(img)
+        img = img / 255.0
+        img = cv2.resize(img, (32, 32))
+        processed_images.append(img)
+    return np.array(processed_images)
+
+def preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test):
+    x_train = preprocess_images(x_train)
+    x_valid = preprocess_images(x_valid)
+    x_test = preprocess_images(x_test)
+    return x_train, y_train, x_valid, y_valid, x_test, y_test
+
+def plot_preprocessed_data(X_train, y_train):
     X_train = X_train.reshape(X_train.shape + (1,))
 
     datagen = ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, zoom_range=0.2, shear_range=0.1, rotation_range=10)
@@ -140,74 +188,18 @@ def visualize_augmented_data(X_train, y_train):
 
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
-    class_names_cifar10 = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck']
     classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
+    class_names_cifar10 = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck']
     class_names_cifar100 = ['baby', 'bicycle', 'boy', 'bus', 'cattle', 'fox', 'girl', 'lawn mower', 'man', 'motorcycle', 'pickup truck', 'rabbit', 'squirrel', 'tractor', 'train', 'woman', 'trees']
     combined_classes = classes_cifar10 + classes_cifar100
     combined_classes_name = class_names_cifar10 + class_names_cifar100
 
-    (x_train_cifar10, y_train_cifar10), (x_valid_cifar10, y_valid_cifar10), (x_test_cifar10, y_test_cifar10) = \
-        load_cifar10_filtered(classes_cifar10)
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_datasets(classes_cifar10, classes_cifar100)
 
-    (x_train_cifar100, y_train_cifar100), (x_valid_cifar100, y_valid_cifar100), (x_test_cifar100, y_test_cifar100) = \
-        load_cifar100_filtered(classes_cifar100)
-
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = \
-        combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_valid_cifar10,
-                               x_test_cifar10, y_test_cifar10, x_train_cifar100, y_train_cifar100,
-                               x_valid_cifar100, y_valid_cifar100, x_test_cifar100, y_test_cifar100)
-
-    print("CIFAR-10 shapes:")
-    print("Train data:", x_train_cifar10.shape)
-    print("Train labels:", y_train_cifar10.shape)
-    print("Validation data:", x_valid_cifar10.shape)
-    print("Validation labels:", y_valid_cifar10.shape)
-    print("Test data:", x_test_cifar10.shape)
-    print("Test labels:", y_test_cifar10.shape)
-
-    print("CIFAR-100 shapes:")
-    print("Train data:", x_train_cifar100.shape)
-    print("Train labels:", y_train_cifar100.shape)
-    print("Validation data:", x_valid_cifar100.shape)
-    print("Validation labels:", y_valid_cifar100.shape)
-    print("Test data:", x_test_cifar100.shape)
-    print("Test labels:", y_test_cifar100.shape)
-
-    print("Combined CIFAR datasets shapes:")
-    print("Combined Train data:", x_train.shape)
-    print("Combined Train labels:", y_train.shape)
-    print("Combined Validation data:", x_valid.shape)
-    print("Combined Validation labels:", y_valid.shape)
-    print("Combined Test data:", x_test.shape)
-    print("Combined Test labels:", y_test.shape)
-
-    assert x_train_cifar10.shape[0] == y_train_cifar10.shape[0], "The number of training images in CIFAR-10 is different from the number of labels"
-    assert x_valid_cifar10.shape[0] == y_valid_cifar10.shape[0], "The number of validation images in CIFAR-10 is different from the number of labels"
-    assert x_test_cifar10.shape[0] == y_test_cifar10.shape[0], "The number of test images in CIFAR-10 is different from the number of labels"
-    assert x_train_cifar10.shape[1:] == (32, 32, 3), "The training images in CIFAR-10 are not 32x32x3"
-    assert x_valid_cifar10.shape[1:] == (32, 32, 3), "The validation images in CIFAR-10 are not 32x32x3"
-    assert x_test_cifar10.shape[1:] == (32, 32, 3), "The test images in CIFAR-10 are not 32x32x3"
-
-    assert x_train_cifar100.shape[0] == y_train_cifar100.shape[0], "The number of training images in CIFAR-100 is different from the number of labels"
-    assert x_valid_cifar100.shape[0] == y_valid_cifar100.shape[0], "The number of validation images in CIFAR-100 is different from the number of labels"
-    assert x_test_cifar100.shape[0] == y_test_cifar100.shape[0], "The number of test images in CIFAR-100 is different from the number of labels"
-    assert x_train_cifar100.shape[1:] == (32, 32, 3), "The training images in CIFAR-100 are not 32x32x3"
-    assert x_valid_cifar100.shape[1:] == (32, 32, 3), "The validation images in CIFAR-100 are not 32x32x3"
-    assert x_test_cifar100.shape[1:] == (32, 32, 3), "The test images in CIFAR-100 are not 32x32x3"
-
-    assert x_train.shape[0] == y_train.shape[0], "The number of combined training images is different from the number of labels"
-    assert x_valid.shape[0] == y_valid.shape[0], "The number of combined validation images is different from the number of labels"
-    assert x_test.shape[0] == y_test.shape[0], "The number of combined test images is different from the number of labels"
-    assert x_train.shape[1:] == (32, 32, 3), "The combined training images are not 32x32x3"
-    assert x_valid.shape[1:] == (32, 32, 3), "The combined validation images are not 32x32x3"
-    assert x_test.shape[1:] == (32, 32, 3), "The combined test images are not 32x32x3"
-
-    visualize_images(x_train, y_train, combined_classes, combined_classes_name)
+    plot_images(x_train, y_train, combined_classes, combined_classes_name)
     plot_distribution(y_train, combined_classes)
-    x_train = preprocess_dataset(x_train)
-    x_valid = preprocess_dataset(x_valid)
-    x_test = preprocess_dataset(x_test)
-    visualize_augmented_data(x_train, y_train)
+    x_train, y_train, x_valid, y_valid, x_test, y_test = preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test)
+    plot_preprocessed_data(x_train, y_train)
 
 if __name__ == "__main__":
     main()
