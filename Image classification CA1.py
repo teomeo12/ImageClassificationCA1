@@ -80,7 +80,6 @@ def combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_
 def load_and_explore_datasets(classes_cifar10, classes_cifar100):
     (x_train_cifar10, y_train_cifar10), (x_valid_cifar10, y_valid_cifar10), (x_test_cifar10, y_test_cifar10) = \
         load_cifar10_filtered(classes_cifar10)
-    print("CIFAR-10 shapes:")
     print_dataset_shapes("CIFAR-10", x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_valid_cifar10, x_test_cifar10, y_test_cifar10)
     assert_dataset_properties("CIFAR-10 Train", x_train_cifar10, y_train_cifar10, expected_shape=(32, 32, 3))
     assert_dataset_properties("CIFAR-10 Validation", x_valid_cifar10, y_valid_cifar10, expected_shape=(32, 32, 3))
@@ -88,7 +87,6 @@ def load_and_explore_datasets(classes_cifar10, classes_cifar100):
     
     (x_train_cifar100, y_train_cifar100), (x_valid_cifar100, y_valid_cifar100), (x_test_cifar100, y_test_cifar100) = \
         load_cifar100_filtered(classes_cifar100)
-    print("CIFAR-100 shapes:")
     print_dataset_shapes("CIFAR-100", x_train_cifar100, y_train_cifar100, x_valid_cifar100, y_valid_cifar100, x_test_cifar100, y_test_cifar100)
     assert_dataset_properties("CIFAR-100 Train", x_train_cifar100, y_train_cifar100, expected_shape=(32, 32, 3))
     assert_dataset_properties("CIFAR-100 Validation", x_valid_cifar100, y_valid_cifar100, expected_shape=(32, 32, 3))
@@ -98,7 +96,6 @@ def load_and_explore_datasets(classes_cifar10, classes_cifar100):
         combine_cifar_datasets(x_train_cifar10, y_train_cifar10, x_valid_cifar10, y_valid_cifar10,
                                x_test_cifar10, y_test_cifar10, x_train_cifar100, y_train_cifar100,
                                x_valid_cifar100, y_valid_cifar100, x_test_cifar100, y_test_cifar100)
-    print("Combined CIFAR datasets shapes:")
     print_dataset_shapes("Combined CIFAR datasets", x_train, y_train, x_valid, y_valid, x_test, y_test)
     assert_dataset_properties("Combined Train", x_train, y_train, expected_shape=(32, 32, 3))
     assert_dataset_properties("Combined Validation", x_valid, y_valid, expected_shape=(32, 32, 3))
@@ -126,7 +123,6 @@ def plot_images(X, y, class_labels, class_names):
 
 def plot_distribution(y, class_labels):
     num_of_samples = []
-
     for class_label in class_labels:
         x_selected = y[y == class_label]
         num_of_samples.append(len(x_selected))
@@ -188,21 +184,16 @@ def plot_preprocessed_data(X_train, y_train):
 
 def remove_samples(X, y, classes_to_remove, samples_to_remove):
     indices_to_keep = []
-
     for class_label in np.unique(y):
         class_indices = np.where(y == class_label)[0]
-        np.random.shuffle(class_indices)  # Shuffle the indices for each class
-
+        np.random.shuffle(class_indices)
         if class_label in classes_to_remove:
             class_indices = class_indices[:samples_to_remove]
-
         indices_to_keep.extend(class_indices)
-
-    np.random.shuffle(indices_to_keep)  # Shuffle all indices again
+    np.random.shuffle(indices_to_keep)
 
     filtered_X = X[indices_to_keep]
     filtered_y = y[indices_to_keep]
-
     return filtered_X, filtered_y
 
 def main():
@@ -221,9 +212,6 @@ def main():
     x_train, y_train, x_valid, y_valid, x_test, y_test = preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test)
     plot_preprocessed_data(x_train, y_train)
     plot_distribution(y_train, combined_classes)
-    unique_classes, class_counts = np.unique(y_train, return_counts=True)
-    print("Class labels:", unique_classes)
-    print("Class counts:", class_counts)
 
 if __name__ == "__main__":
     main()
