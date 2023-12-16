@@ -196,6 +196,31 @@ def remove_samples(X, y, classes_to_remove, samples_to_remove):
     filtered_y = y[indices_to_keep]
     return filtered_X, filtered_y
 
+
+def print_dataset_information(name, X, y, class_labels, class_names):
+    print(f"{name} information:")
+    print("Number of classes:", len(class_labels))
+    print("Class labels:", class_labels)
+    print("Class names:", class_names)
+    
+    label_counts = {class_label: np.sum(y == class_label) for class_label in class_labels}
+    print("Number of labels for each class:")
+    for class_label, count in label_counts.items():
+        class_name = class_names[class_labels.index(class_label)]
+        print(f"  {class_label} ({class_name}): {count}")
+    
+    total_images = len(y)
+    print("Total number of images:", total_images)
+    
+    total_images_per_class = {class_label: np.sum(y == class_label) for class_label in class_labels}
+    print("Total number of images for each class:")
+    for class_label, count in total_images_per_class.items():
+        class_name = class_names[class_labels.index(class_label)]
+        print(f"  {class_label} ({class_name}): {count}")
+    
+    image_size = X.shape[1:3]
+    print("Image size:", image_size)
+
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
@@ -205,12 +230,14 @@ def main():
     combined_classes_name = class_names_cifar10 + class_names_cifar100
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_and_explore_datasets(classes_cifar10, classes_cifar100)
-    
     plot_images(x_train, y_train, combined_classes, combined_classes_name)
+
+    print_dataset_information("Original CIFAR dataset", x_train, y_train, combined_classes,combined_classes_name)
     plot_distribution(y_train, combined_classes)
     x_train, y_train = remove_samples(x_train, y_train, [1,2,3,4,5,7,9,111], 600)
     x_train, y_train, x_valid, y_valid, x_test, y_test = preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test)
     plot_preprocessed_data(x_train, y_train)
+    print_dataset_information("Preprocessed CIFAR dataset", x_train, y_train, combined_classes,combined_classes_name)
     plot_distribution(y_train, combined_classes)
 
 if __name__ == "__main__":
