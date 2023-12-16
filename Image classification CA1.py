@@ -230,6 +230,9 @@ def analyze_model(model, X_train, y_train, X_test, y_test):
     history = train_model(model, X_train, y_train)
     plot_loss(history)
     evaluate_model(model, X_test, y_test)
+    #img = test_model_with_sample_image(model)  
+    #visualize_cnn_output(model, img)  
+
     
 
 #print the loss and accuracy over epochs
@@ -277,15 +280,7 @@ def main():
     plot_preprocessed_data(x_train, y_train)
     plot_distribution(y_train, combined_classes)
 
-    # Remap the labels to range from 0 to num_classes - 1
-    unique_labels = np.unique(np.concatenate((y_train, y_valid, y_test)))
-    num_classes = len(unique_labels)  # 24 classes
-    label_mapping = {original: new for new, original in enumerate(sorted(unique_labels))}
-    y_train = np.array([label_mapping[label] for label in y_train])
-    y_valid = np.array([label_mapping[label] for label in y_valid])
-    y_test = np.array([label_mapping[label] for label in y_test])
-
-    model = build_model(num_classes)  # 24 classes  
+    model = build_model(num_classes=len(classes_cifar10) + len(classes_cifar100))
     analyze_model(model, x_train, y_train, x_test, y_test) #calling the analyze_model function
 
 if __name__ == "__main__":
