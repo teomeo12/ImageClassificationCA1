@@ -19,6 +19,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # Dataset
 from tensorflow.keras.datasets import cifar10, cifar100
 
+from keras.layers import Flatten
+from keras.layers import Conv2D, MaxPooling2D, Dropout, Dense, Input, concatenate
+from keras.models import Model
+
 def load_cifar10_filtered(selected_classes, validation_split=0.1):
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -212,7 +216,7 @@ def build_model(num_classes):
         Flatten(),
         Dense(256, activation='relu'),
         Dropout(0.5),
-        Dense(111, activation='softmax')
+        Dense(num_classes, activation='softmax')
     ])
     
     model.compile(optimizer=Adam(learning_rate=0.0001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
@@ -230,10 +234,8 @@ def analyze_model(model, X_train, y_train, X_test, y_test):
     history = train_model(model, X_train, y_train)
     plot_loss(history)
     evaluate_model(model, X_test, y_test)
-    #img = test_model_with_sample_image(model)  
-    #visualize_cnn_output(model, img)  
-
-    
+    img = test_model_with_sample_image(model)  
+    visualize_cnn_output(model, img)  
 
 #print the loss and accuracy over epochs
 def plot_loss(history):
@@ -263,6 +265,65 @@ def evaluate_model(model, X_test, y_test):
     print('Test Score:', score[0])
     print('Test Accuracy:', score[1])
 
+#test the model with a sample image
+def test_model_with_sample_image(model, cifar_dataset='CIFAR10', class_index=0, image_index=0):
+    # Load the desired dataset
+    if cifar_dataset == 'CIFAR10':
+        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+    elif cifar_dataset == 'CIFAR100':
+        (X_train, y_train), (X_test, y_test) = cifar100.load_data(label_mode='fine')
+
+    # Select an image from the specified class
+    class_images = X_test[y_test.flatten() == class_index]
+    if image_index >= len(class_images):
+        print("Image index is out of bounds. Using a random image from the class.")
+        image_index = np.random.choice(range(len(class_images)))
+    img = class_images[image_index]
+    plt.imshow(img)
+    plt.show()
+    
+    gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.bitwise_not(gray_scale)
+    # Show the selected image
+    plt.imshow(img, cmap=plt.get_cmap("gray"))
+    plt.title(f"Class {class_index}, Image {image_index}")
+    plt.show()
+
+    # Preprocess the image for prediction (Normalize and reshape)
+    img = img / 255.0
+    img = img.reshape(1, 32, 32, 1)
+
+    # Predict the class
+    prediction = np.argmax(model.predict(img), axis=-1)
+    print("Predicted image: ", str(prediction))
+    return img
+
+#visualize the output of the convolutional layers   
+def visualize_cnn_output(model, img):
+     # Creating models that output the activations of the specified layers
+    layer1 = Model(inputs=model.layers[0].input, outputs=model.layers[0].output)
+    layer2 = Model(inputs=model.layers[0].input, outputs=model.layers[2].output)
+
+    # Predicting the activations
+    visual_layer1 = layer1.predict(img)
+    visual_layer2 = layer2.predict(img)
+
+    # Visualize the activations of the first layer
+    plt.figure(figsize=(10, 6))
+    for i in range(30):  # Adjust this range according to the number of filters in layer
+        plt.subplot(6, 5, i + 1)
+        plt.imshow(visual_layer1[0, :, :, i], cmap='jet')
+        plt.axis('off')
+    plt.show()
+
+    # Visualize the activations of the second layer
+    plt.figure(figsize=(10, 6))
+    for i in range(15):  # Adjust this range according to the number of filters in  layer
+        plt.subplot(3, 5, i + 1)
+        plt.imshow(visual_layer2[0, :, :, i], cmap='jet')
+        plt.axis('off')
+    plt.show()
+
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
@@ -280,7 +341,15 @@ def main():
     plot_preprocessed_data(x_train, y_train)
     plot_distribution(y_train, combined_classes)
 
-    model = build_model(num_classes=len(classes_cifar10) + len(classes_cifar100))
+    # Remap the labels to range from 0 to num_classes - 1
+    unique_labels = np.unique(np.concatenate((y_train, y_valid, y_test)))
+    num_classes = len(unique_labels)  # 24 classes
+    label_mapping = {original: new for new, original in enumerate(sorted(unique_labels))}
+    y_train = np.array([label_mapping[label] for label in y_train])
+    y_valid = np.array([label_mapping[label] for label in y_valid])
+    y_test = np.array([label_mapping[label] for label in y_test])
+
+    model = build_model(num_classes)
     analyze_model(model, x_train, y_train, x_test, y_test) #calling the analyze_model function
 
 if __name__ == "__main__":
