@@ -196,6 +196,70 @@ def remove_samples(X, y, classes_to_remove, samples_to_remove):
     filtered_y = y[indices_to_keep]
     return filtered_X, filtered_y
 
+#building the model and compiling it with Adam optimizer
+def build_model(num_classes):
+    model = Sequential([
+        Conv2D(32, (5, 5), activation='relu', input_shape=(32, 32, 1)),
+        Conv2D(32, (5, 5), activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.25),
+
+        Conv2D(64, (3, 3), activation='relu'),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.25),
+
+        Flatten(),
+        Dense(256, activation='relu'),
+        Dropout(0.5),
+        Dense(111, activation='softmax')
+    ])
+    
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+#training the model
+def train_model(model, X_train, y_train, epochs=10, batch_size=200):
+    history = model.fit(X_train, y_train, validation_split=0.1, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=1)
+    return history
+
+#analyzing the model
+def analyze_model(model, X_train, y_train, X_test, y_test):
+    print(model.summary())
+    # Train the model and get the history
+    history = train_model(model, X_train, y_train)
+    plot_loss(history)
+    evaluate_model(model, X_test, y_test)
+    
+
+#print the loss and accuracy over epochs
+def plot_loss(history):
+    # Plot training & validation loss values
+    plt.figure(figsize=(12, 4))
+    plt.plot(history.history['loss'], label='Training loss')
+    plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.title('Loss over epochs')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.show()
+
+    # Plot training & validation accuracy values
+    plt.figure(figsize=(12, 4))
+    plt.plot(history.history['accuracy'], label='Training accuracy')
+    plt.plot(history.history['val_accuracy'], label='Validation accuracy')
+    plt.title('Accuracy over epochs')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.show()
+
+#evaluate the model
+def evaluate_model(model, X_test, y_test):
+    score = model.evaluate(X_test, y_test, verbose=1)
+    print('Test Score:', score[0])
+    print('Test Accuracy:', score[1])
+
 def main():
     classes_cifar10 = [1, 2, 3, 4, 5, 7, 9]
     classes_cifar100 = [12, 18, 21, 23, 29, 44, 45, 51, 56, 58, 68, 75, 90, 99, 100, 108, 111]
@@ -212,6 +276,17 @@ def main():
     x_train, y_train, x_valid, y_valid, x_test, y_test = preprocess_data(x_train, y_train, x_valid, y_valid, x_test, y_test)
     plot_preprocessed_data(x_train, y_train)
     plot_distribution(y_train, combined_classes)
+
+    # Remap the labels to range from 0 to num_classes - 1
+    unique_labels = np.unique(np.concatenate((y_train, y_valid, y_test)))
+    num_classes = len(unique_labels)  # 24 classes
+    label_mapping = {original: new for new, original in enumerate(sorted(unique_labels))}
+    y_train = np.array([label_mapping[label] for label in y_train])
+    y_valid = np.array([label_mapping[label] for label in y_valid])
+    y_test = np.array([label_mapping[label] for label in y_test])
+
+    model = build_model(num_classes)  # 24 classes  
+    analyze_model(model, x_train, y_train, x_test, y_test) #calling the analyze_model function
 
 if __name__ == "__main__":
     main()
