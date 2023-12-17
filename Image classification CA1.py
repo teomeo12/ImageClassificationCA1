@@ -281,6 +281,12 @@ def test_model_with_sample_image(model, cifar_dataset='CIFAR10', class_index=0, 
     img = class_images[image_index]
     plt.imshow(img)
     plt.show()
+
+    # Define class names for CIFAR-10 and CIFAR-100
+    class_names = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck',
+               'baby', 'bicycle', 'boy', 'bus', 'cattle', 'fox', 'girl', 
+               'lawn mower', 'man', 'motorcycle', 'pickup truck', 'rabbit', 
+               'squirrel', 'tractor', 'train', 'woman', 'trees']
     
     gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = cv2.bitwise_not(gray_scale)
@@ -293,9 +299,10 @@ def test_model_with_sample_image(model, cifar_dataset='CIFAR10', class_index=0, 
     img = img / 255.0
     img = img.reshape(1, 32, 32, 1)
 
-    # Predict the class
-    prediction = np.argmax(model.predict(img), axis=-1)
-    print("Predicted image: ", str(prediction))
+    #predicted index to get the class name
+    predicted_index = np.argmax(model.predict(img), axis=-1)[0]  # Get the first item from the prediction array
+    predicted_class_name = class_names[predicted_index]
+    print("Predicted image class: ", predicted_class_name)
     return img
 
 #visualize the output of the convolutional layers   
