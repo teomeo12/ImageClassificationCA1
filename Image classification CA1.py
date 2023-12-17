@@ -202,28 +202,27 @@ def remove_samples(X, y, classes_to_remove, samples_to_remove):
 
 #building the model and compiling it with Adam optimizer
 def build_model(num_classes):
+    print("Building the model...")
     model = Sequential([
         Conv2D(32, (5, 5), activation='relu', input_shape=(32, 32, 1)),
         Conv2D(32, (5, 5), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.25),
-
         Conv2D(64, (3, 3), activation='relu'),
         Conv2D(64, (3, 3), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.25),
-
+        #Dropout(0.25),
         Flatten(),
-        Dense(256, activation='relu'),
-        Dropout(0.5),
+        Dense(500, activation='relu'),
+        Dropout(0.15),
         Dense(num_classes, activation='softmax')
     ])
     
-    model.compile(optimizer=Adam(learning_rate=0.0001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 #training the model
-def train_model(model, X_train, y_train, epochs=10, batch_size=200):
+def train_model(model, X_train, y_train, epochs=20, batch_size=150):
+    print("Training the model...")
     history = model.fit(X_train, y_train, validation_split=0.1, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=1)
     return history
 
@@ -267,6 +266,7 @@ def evaluate_model(model, X_test, y_test):
 
 #test the model with a sample image
 def test_model_with_sample_image(model, cifar_dataset='CIFAR10', class_index=0, image_index=0):
+    print("Testing the model with a sample image...")
     # Load the desired dataset
     if cifar_dataset == 'CIFAR10':
         (X_train, y_train), (X_test, y_test) = cifar10.load_data()
