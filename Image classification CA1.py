@@ -19,6 +19,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # Dataset
 from tensorflow.keras.datasets import cifar10, cifar100
 
+from keras.layers import Flatten
+from keras.layers import Conv2D, MaxPooling2D, Dropout, Dense, Input, concatenate
+from keras.models import Model
+
 def load_cifar10_filtered(selected_classes, validation_split=0.1):
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -196,6 +200,136 @@ def remove_samples(X, y, classes_to_remove, samples_to_remove):
     filtered_y = y[indices_to_keep]
     return filtered_X, filtered_y
 
+#building the model and compiling it with Adam optimizer
+def build_model(num_classes):
+    print("Building the model...")
+    model = Sequential([
+        Conv2D(32, (5, 5), activation='relu', input_shape=(32, 32, 1)),
+        Conv2D(32, (5, 5), activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Conv2D(64, (3, 3), activation='relu'),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        #Dropout(0.25),
+        Flatten(),
+        Dense(500, activation='relu'),
+        Dropout(0.15),
+        Dense(num_classes, activation='softmax')
+    ])
+    
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+#training the model
+def train_model(model, X_train, y_train, epochs=20, batch_size=150):
+    print("Training the model...")
+    history = model.fit(X_train, y_train, validation_split=0.1, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=1)
+    return history
+
+#analyzing the model
+def analyze_model(model, X_train, y_train, X_test, y_test):
+    print(model.summary())
+    # Train the model and get the history
+    history = train_model(model, X_train, y_train)
+    plot_loss(history)
+    evaluate_model(model, X_test, y_test)
+    img = test_model_with_sample_image(model)  
+    visualize_cnn_output(model, img)  
+
+#print the loss and accuracy over epochs
+def plot_loss(history):
+    # Plot training & validation loss values
+    plt.figure(figsize=(12, 4))
+    plt.plot(history.history['loss'], label='Training loss')
+    plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.title('Loss over epochs')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.show()
+
+    # Plot training & validation accuracy values
+    plt.figure(figsize=(12, 4))
+    plt.plot(history.history['accuracy'], label='Training accuracy')
+    plt.plot(history.history['val_accuracy'], label='Validation accuracy')
+    plt.title('Accuracy over epochs')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.show()
+
+#evaluate the model
+def evaluate_model(model, X_test, y_test):
+    score = model.evaluate(X_test, y_test, verbose=1)
+    print('Test Score:', score[0])
+    print('Test Accuracy:', score[1])
+
+#test the model with a sample image
+def test_model_with_sample_image(model, cifar_dataset='CIFAR10', class_index=0, image_index=0):
+    print("Testing the model with a sample image...")
+    # Load the desired dataset
+    if cifar_dataset == 'CIFAR10':
+        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+    elif cifar_dataset == 'CIFAR100':
+        (X_train, y_train), (X_test, y_test) = cifar100.load_data(label_mode='fine')
+
+    # Select an image from the specified class
+    class_images = X_test[y_test.flatten() == class_index]
+    if image_index >= len(class_images):
+        print("Image index is out of bounds. Using a random image from the class.")
+        image_index = np.random.choice(range(len(class_images)))
+    img = class_images[image_index]
+    plt.imshow(img)
+    plt.show()
+
+    # Define class names for CIFAR-10 and CIFAR-100
+    class_names = ['automobile', 'bird', 'cat', 'deer', 'dog', 'horse', 'truck',
+               'baby', 'bicycle', 'boy', 'bus', 'cattle', 'fox', 'girl', 
+               'lawn mower', 'man', 'motorcycle', 'pickup truck', 'rabbit', 
+               'squirrel', 'tractor', 'train', 'woman', 'trees']
+    
+    gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.bitwise_not(gray_scale)
+    # Show the selected image
+    plt.imshow(img, cmap=plt.get_cmap("gray"))
+    plt.title(f"Class {class_index}, Image {image_index}")
+    plt.show()
+
+    # Preprocess the image for prediction (Normalize and reshape)
+    img = img / 255.0
+    img = img.reshape(1, 32, 32, 1)
+
+    #predicted index to get the class name
+    predicted_index = np.argmax(model.predict(img), axis=-1)[0]  # Get the first item from the prediction array
+    predicted_class_name = class_names[predicted_index]
+    print("Predicted image class: ", predicted_class_name)
+    return img
+
+#visualize the output of the convolutional layers   
+def visualize_cnn_output(model, img):
+     # Creating models that output the activations of the specified layers
+    layer1 = Model(inputs=model.layers[0].input, outputs=model.layers[0].output)
+    layer2 = Model(inputs=model.layers[0].input, outputs=model.layers[2].output)
+
+    # Predicting the activations
+    visual_layer1 = layer1.predict(img)
+    visual_layer2 = layer2.predict(img)
+
+    # Visualize the activations of the first layer
+    plt.figure(figsize=(10, 6))
+    for i in range(30):  # Adjust this range according to the number of filters in layer
+        plt.subplot(6, 5, i + 1)
+        plt.imshow(visual_layer1[0, :, :, i], cmap='jet')
+        plt.axis('off')
+    plt.show()
+
+    # Visualize the activations of the second layer
+    plt.figure(figsize=(10, 6))
+    for i in range(15):  # Adjust this range according to the number of filters in  layer
+        plt.subplot(3, 5, i + 1)
+        plt.imshow(visual_layer2[0, :, :, i], cmap='jet')
+        plt.axis('off')
+    plt.show()
 
 def print_dataset_information(name, X, y, class_labels, class_names):
     print(f"{name} information:")
@@ -239,6 +373,17 @@ def main():
     plot_preprocessed_data(x_train, y_train)
     print_dataset_information("Preprocessed CIFAR dataset", x_train, y_train, combined_classes,combined_classes_name)
     plot_distribution(y_train, combined_classes)
+
+    # Remap the labels to range from 0 to num_classes - 1
+    unique_labels = np.unique(np.concatenate((y_train, y_valid, y_test)))
+    num_classes = len(unique_labels)  # 24 classes
+    label_mapping = {original: new for new, original in enumerate(sorted(unique_labels))}
+    y_train = np.array([label_mapping[label] for label in y_train])
+    y_valid = np.array([label_mapping[label] for label in y_valid])
+    y_test = np.array([label_mapping[label] for label in y_test])
+
+    model = build_model(num_classes)
+    analyze_model(model, x_train, y_train, x_test, y_test) #calling the analyze_model function
 
 if __name__ == "__main__":
     main()
